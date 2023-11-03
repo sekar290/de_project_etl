@@ -16,14 +16,3 @@
 
 ---
 
-Here are some glimpse of the result from visualization :
-
-1. Total transaction by Country
-
-![transaction_by_country](/images/transaction_by_country.png)
-
-Description : from matrix above, the highest quantity that have sold come from United Kingdom wtih total sales 4263829
-
-2. Here is a matrix that show total amount by date
-
-![sub_total_by_date](/images/sub_total_by_date.png)

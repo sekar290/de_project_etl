@@ -21,7 +21,7 @@ The data used in this project is weather data and air quality data obtained from
 
 ## Architecture Overview
 
-![Pipeline][/images/pipeline.png]
+![Pipeline](/images/pipeline.png)
 
 1. Get data weather and air-quality from open-meteo daily using airflow as the orchestration
 2. Store the data in postgresql

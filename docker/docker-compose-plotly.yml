@@ -1,0 +1,16 @@
+version: '3.7'
+services:
+  dashboard:
+    image: dataeng-dibimbing/plotly 
+    container_name: ${DASHBOARD_NAME}-dashboard
+    hostname: ${DASHBOARD_NAME}-dashboard
+    restart: always
+    ports:
+      - 5001:80 
+    env_file:
+      - ../.env
+    
+networks:
+  default:
+    name: dataeng-network
+    external: true

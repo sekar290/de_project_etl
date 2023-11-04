@@ -19,6 +19,8 @@ docker-build:
 	@docker build -t dataeng-dibimbing/airflow -f ./docker/Dockerfile.airflow .
 	@echo '__________________________________________________________'
 	@docker build -t dataeng-dibimbing/jupyter -f ./docker/Dockerfile.jupyter .
+	@echo '__________________________________________________________'
+	@docker build -t dataeng-dibimbing/plotly -f ./docker/Dockerfile.plotly .
 	@echo '==========================================================='
 
 docker-build-arm:
@@ -91,6 +93,12 @@ postgres-ingest-csv:
 	@docker exec -it ${POSTGRES_CONTAINER_NAME} psql -U ${POSTGRES_USER} -d ${POSTGRES_DB} -f sql/ingest-lat-long.sql
 	@echo '==========================================================='
 
+plotly:
+	@echo '__________________________________________________________'
+	@echo 'Creating Dash Plotly ...'
+	@echo '__________________________________________________________'
+	@docker-compose -f ./docker/docker-compose-plotly.yml --env-file .env up
+	@echo '==========================================================='
 
 clean:
 	@bash ./scripts/goodnight.sh

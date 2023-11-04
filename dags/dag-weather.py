@@ -7,7 +7,8 @@ import json
 import os
 import psycopg2
 import pandas as pd
-import openmeteo_requests
+import csv
+from collections import defaultdict
 
 # Load environment variables from the .env file
 load_dotenv()
@@ -34,9 +35,34 @@ with DAG(
     schedule_interval=None, # This means the DAG is not scheduled, it needs to be triggered manually.
     catchup=False,  # Don't backfill for past dates.
 ):
-    def get_data():
+    
+    def read_kabko():
 
         try:
+            csv_file_path = "/data/lat-long-data/lat_long_data.csv"
+            # Read the CSV file into a DataFrame
+            # Initialize a dictionary to store the data
+            data_dict = defaultdict(list)
+
+            # Open the CSV file
+            with open(csv_file_path, mode='r') as csv_file:
+                # Create a CSV reader
+                csv_reader = csv.DictReader(csv_file)
+                
+                # Iterate over each row in the CSV file
+                for row in csv_reader:
+                    for key, value in row.items():
+                        data_dict[key].append(value)
+
+        except Exception as e:
+
+            print("Failed read file lat long data")
+        
+        return data_dict
+
+    def get_data():
+
+        # try:
             
             today = datetime.today()
             formatted_date = today.strftime("%Y-%m-%d")
@@ -46,15 +72,17 @@ with DAG(
 
             # Get Param
             # Specify the path
-            csv_file_path = "/data/lat-long-data/lat_long_data.csv"
+            
             file_path_weather = f"/data/weather-data/weather-{formatted_date_file}.json"
             file_path_air_quality = f"/data/air-quality-data/aq-{formatted_date_file}.json" 
+            file_path_weather_csv = f"/data/weather-data/weather-{formatted_date_file}.csv"
+            file_path_air_quality_csv = f"/data/air-quality-data/aq-{formatted_date_file}.csv"
 
-            # Read the CSV file into a DataFrame
-            df = pd.read_csv(csv_file_path)
-
-            value_lat = df['lat'].tolist()
-            value_long = df['long'].tolist()
+            # Call function read_kabko
+            data_params = read_kabko()
+            id_kabko = data_params['id']
+            value_lat = data_params['lat']
+            value_long = data_params['long']
             print(f"value_lat: {value_lat}, value_long: {value_long}")
 
             # Get data weather
@@ -72,6 +100,29 @@ with DAG(
                 data_weather = response_weather.json()
                 with open(file_path_weather, 'w') as json_file:
                     json.dump(data_weather, json_file, indent=3)
+
+                # Extract values from JSON and create a list of dictionaries
+                data_to_write_weather = []
+                for a, item in enumerate(data_weather):
+                    for i, time in enumerate(item["hourly"]["time"]):
+                        data_to_write_weather.append({
+                            "n_id_kabko":a+1,
+                            "d_date": time,
+                            "n_temperature_2m": item["hourly"]["temperature_2m"][i],
+                            "n_relativehumidity_2m": item["hourly"]["relativehumidity_2m"][i],
+                            "n_visibility": item["hourly"]["visibility"][i],
+                            "n_uv_index": item["hourly"]["uv_index"][i]
+                        })
+                
+                # Extract column names from the JSON keys
+                column_names = data_to_write_weather[0].keys()
+                print(f"column_names: {column_names}")
+
+                # Open the CSV file and write the data
+                with open(file_path_weather_csv, mode="w", newline="") as file:
+                    writer = csv.DictWriter(file, fieldnames=column_names)
+                    writer.writeheader()
+                    writer.writerows(data_to_write_weather)
             
             # Get data air quality
             url_air_quality = "https://air-quality-api.open-meteo.com/v1/air-quality"
@@ -87,14 +138,33 @@ with DAG(
                 data_air_quality = response_air_quality.json()
                 with open(file_path_air_quality, 'w') as json_file:
                     json.dump(data_air_quality, json_file, indent=3)
+                
+                data_to_write_aq = []
+                for b, item in enumerate(data_air_quality):
+                    for j, time in enumerate(item["hourly"]["time"]):
+                        data_to_write_aq.append({
+                            "n_id_kabko":b+1,
+                            "d_date": item["hourly"]["time"][j],
+                            "n_pm10": item["hourly"]["pm10"][j],
+                            "n_pm2_5": item["hourly"]["pm2_5"][j]
+                        })
+                # Extract column names from the JSON keys
+                column_names = data_to_write_aq[0].keys()
+                print(f"column_names aq: {column_names}")
 
-        except Exception as e:
-            print("Failed to write file json")
+                # Open the CSV file and write the data
+                with open(file_path_air_quality_csv, mode="w", newline="") as file:
+                    writer = csv.DictWriter(file, fieldnames=column_names)
+                    writer.writeheader()
+                    writer.writerows(data_to_write_aq)
+
+        # except Exception as e:
+            # print("Failed to write file json")
 
 
     def insert_data_to_postgres():
 
-        try:
+        # try:
 
             # PostgreSQL connection parameters
             db_params = {
@@ -109,35 +179,69 @@ with DAG(
             formatted_date_file = today.strftime("%Y%m%d")
             json_file_path_weather = f"/data/weather-data/weather-{formatted_date_file}.json" 
             json_file_path_air_quality = f"/data/air-quality-data/aq-{formatted_date_file}.json" 
+            file_path_weather_csv = f"/data/weather-data/weather-{formatted_date_file}.csv"
+            file_path_air_quality_csv = f"/data/air-quality-data/aq-{formatted_date_file}.csv"
 
             # Read and parse the JSON data
             with open(json_file_path_weather, "r") as json_file_weather:
                 data_weather = json.load(json_file_weather)
-            with open(json_file_path_weather, "r") as json_file_air_quality:
+            with open(json_file_path_air_quality, "r") as json_file_air_quality:
                 data_air_quality = json.load(json_file_air_quality)
 
+            print("step this")
             # Establish a connection to the PostgreSQL database
             conn = psycopg2.connect(**db_params)
+            print("Connection to PostgreSQL database successful")
             cursor = conn.cursor()
 
-            # Insert data to Postgres
-            insert_sql = """
-                INSERT INTO dim_weather (n_id_kabko, d_date, n_temperature_2m, n_relativehumidity_2m, n_visibility, n_uv_index)
-                VALUES (%s, %s, %s, %s, %s, %s)
-            """
-            # Execute the SQL statement with data from the JSON object
-            cursor.execute(insert_sql, (data_weather["hourly"]["column1"], data["column2"], data["column3"]))
+            # # Call function read_kabko
+            # data_params = read_kabko()
 
-            # for record1, record2 in zip(data["hourly"]['time'], data["hourly"]['temperature_2m']):
-            #     cursor.execute(
-            #         "INSERT INTO weather (date_day, temperature) VALUES (%s, %s)",
-            #         (record1, record2)
-            #     )
+            # id_kabko = data_params['id']
 
-        except Exception as e:
-            print("Failed to insert data weather to database postgres")
+            # for id, loc_weather in zip(id_kabko, data_weather):
+            #     list_id  = [id] * len(loc_weather["hourly"]["time"])
+            #     print(f"list_id: {list_id}")
+            #     # Insert data to Postgres
+            #     insert_sql_weather = """
+            #         INSERT INTO dim_weather (n_id_kabko, d_date, n_temperature_2m, n_relativehumidity_2m, n_visibility, n_uv_index)
+            #         VALUES (%s, %s, %s, %s, %s, %s)
+            #     """
+            #     # Execute the SQL statement with data from the JSON object
+            #     cursor.execute(insert_sql_weather, (list_id, loc_weather["hourly"]["time"],  loc_weather["hourly"]["temperature_2m"],  loc_weather["hourly"]["relativehumidity_2m"],  loc_weather["hourly"]["visibility"],  loc_weather["hourly"]["uv_index"]))
+            #     print('insert weather')
 
-        finally:
+            # for id, loc_aq in zip(id_kabko, data_air_quality):
+            #     list_id_aq  = [id] * len(loc_aq["hourly"]["time"])
+            #     print(f"list_id_aq: {list_id_aq}")
+            #     # Insert data to dim_air_quality
+            #     insert_sql_air_quality = """
+            #         INSERT INTO dim_air_quality (n_id_kabko, d_date, n_pm10, n_pm2_5)
+            #         VALUES (%s, %s, %s, %s)
+            #     """
+            #     cursor.execute(insert_sql_air_quality, (list_id_aq, loc_aq["hourly"]["time"],  loc_aq["hourly"]["pm10"],  loc_aq["hourly"]["pm2_5"]))
+            #     print('insert air quality')
+
+            list_table_name = ['dim_weather', 'dim_air_quality']
+            list_file_path = [file_path_weather_csv, file_path_air_quality_csv]
+            for table, path_file in zip(list_table_name, list_file_path):
+                if table == 'dim_weather':
+                    copy_sql = f"""COPY {table} (n_id_kabko, d_date, n_temperature_2m, n_relativehumidity_2m, n_visibility, n_uv_index)
+                    FROM stdin DELIMITER AS ',' CSV HEADER;
+                                """
+                else:
+                    copy_sql = f"""COPY {table} (n_id_kabko, d_date, n_pm10, n_pm2_5)
+                    FROM stdin DELIMITER AS ',' CSV HEADER;
+                                """
+                # Open and read the CSV file
+                with open(path_file, 'r') as file:
+                    cursor.copy_expert(sql=copy_sql, file=file)
+                    conn.commit()
+                    print("commit csv")
+        # except Exception as e:
+        #     print("Failed to insert data weather to database postgres")
+
+        # finally:
 
             # Commit changes and close the connection
             conn.commit()
@@ -145,11 +249,11 @@ with DAG(
             conn.close()
     
     # Define the tasks in the DAG
-    fetch_data_task = PythonOperator(
-        task_id='fetch_data',
-        python_callable=get_data,
-        provide_context=True
-    )
+    # fetch_data_task = PythonOperator(
+    #     task_id='fetch_data',
+    #     python_callable=get_data,
+    #     provide_context=True
+    # )
 
     # Define second task that runs the Python function
     insert_data_task = PythonOperator(
@@ -158,4 +262,6 @@ with DAG(
     )
 
     # Set up the task dependencies
-    fetch_data_task >> insert_data_task
+    # fetch_data_task >> insert_data_task
+    # fetch_data_task
+    insert_data_task

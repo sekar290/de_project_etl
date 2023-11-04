@@ -20,7 +20,7 @@ services:
       - ../dags:/opt/airflow/dags
       - ../logs:/opt/airflow/logs
       - ../scripts:/scripts
-      - ../data/weather-data:/data/weather-data
+      - ../data:/data
 
   webserver:
     image: dataeng-dibimbing/airflow
@@ -44,7 +44,7 @@ services:
       - ../dags:/opt/airflow/dags
       - ../logs:/opt/airflow/logs
       - ../scripts:/scripts
-      - ../data/weather-data:/data/weather-data
+      - ../data:/data
  
     ports:
       - ${AIRFLOW_WEBSERVER_PORT}:8080

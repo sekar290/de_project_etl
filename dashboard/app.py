@@ -12,9 +12,6 @@ server = Flask(__name__)
 app = dash.Dash(server=server, external_stylesheets=[dbc.themes.FLATLY])
 app.title = 'Dashboard'
 
-# df_air_quality = pd.read_csv('https://raw.githubusercontent.com/sekar290/de_project_etl/main/data/air-quality-data/aq-20231103.csv')
-# df_weather = pd.read_csv('https://raw.githubusercontent.com/sekar290/de_project_etl/main/data/weather-data/weather-20231103.csv')
-
 df_weather, df_air_quality = get_data_for_dashboard.get_data_postgres()
 
 # Define the app layout

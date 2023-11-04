@@ -1,0 +1,16 @@
+FROM python:3.8-slim-buster
+USER root
+
+RUN apt-get update
+RUN apt-get install nano
+RUN apt-get install -y libpq-dev
+RUN apt-get install -y build-essential
+
+RUN mkdir wd
+WORKDIR wd
+COPY ../requirements.txt .
+RUN pip3 install -r requirements.txt
+
+COPY /dashboard/ ./
+
+CMD [ "gunicorn", "--workers=5", "--threads=1", "-b 0.0.0.0:80", "app:server"]

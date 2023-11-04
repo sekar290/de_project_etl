@@ -11,6 +11,7 @@
 ## spark			- Run a Spark cluster, rebuild the postgres container, then create the destination tables
 ## jupyter			- Spinup jupyter notebook for testing and validation purposes.
 ## airflow			- Spinup airflow scheduler and webserver.
+## plotly           - Run a Dash Plotly Container
 ## clean			- Cleanup all running containers related to the challenge.
 ```
 

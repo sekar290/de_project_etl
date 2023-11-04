@@ -194,32 +194,6 @@ with DAG(
             print("Connection to PostgreSQL database successful")
             cursor = conn.cursor()
 
-            # # Call function read_kabko
-            # data_params = read_kabko()
-
-            # id_kabko = data_params['id']
-
-            # for id, loc_weather in zip(id_kabko, data_weather):
-            #     list_id  = [id] * len(loc_weather["hourly"]["time"])
-            #     print(f"list_id: {list_id}")
-            #     # Insert data to Postgres
-            #     insert_sql_weather = """
-            #         INSERT INTO dim_weather (n_id_kabko, d_date, n_temperature_2m, n_relativehumidity_2m, n_visibility, n_uv_index)
-            #         VALUES (%s, %s, %s, %s, %s, %s)
-            #     """
-            #     # Execute the SQL statement with data from the JSON object
-            #     cursor.execute(insert_sql_weather, (list_id, loc_weather["hourly"]["time"],  loc_weather["hourly"]["temperature_2m"],  loc_weather["hourly"]["relativehumidity_2m"],  loc_weather["hourly"]["visibility"],  loc_weather["hourly"]["uv_index"]))
-            #     print('insert weather')
-
-            # for id, loc_aq in zip(id_kabko, data_air_quality):
-            #     list_id_aq  = [id] * len(loc_aq["hourly"]["time"])
-            #     print(f"list_id_aq: {list_id_aq}")
-            #     # Insert data to dim_air_quality
-            #     insert_sql_air_quality = """
-            #         INSERT INTO dim_air_quality (n_id_kabko, d_date, n_pm10, n_pm2_5)
-            #         VALUES (%s, %s, %s, %s)
-            #     """
-            #     cursor.execute(insert_sql_air_quality, (list_id_aq, loc_aq["hourly"]["time"],  loc_aq["hourly"]["pm10"],  loc_aq["hourly"]["pm2_5"]))
             #     print('insert air quality')
 
             list_table_name = ['dim_weather', 'dim_air_quality']
@@ -249,11 +223,11 @@ with DAG(
             conn.close()
     
     # Define the tasks in the DAG
-    # fetch_data_task = PythonOperator(
-    #     task_id='fetch_data',
-    #     python_callable=get_data,
-    #     provide_context=True
-    # )
+    fetch_data_task = PythonOperator(
+        task_id='fetch_data',
+        python_callable=get_data,
+        provide_context=True
+    )
 
     # Define second task that runs the Python function
     insert_data_task = PythonOperator(
@@ -262,6 +236,6 @@ with DAG(
     )
 
     # Set up the task dependencies
-    # fetch_data_task >> insert_data_task
+    fetch_data_task >> insert_data_task
     # fetch_data_task
-    insert_data_task
+    # insert_data_task

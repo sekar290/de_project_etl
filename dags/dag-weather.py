@@ -62,7 +62,7 @@ with DAG(
 
     def get_data():
 
-        # try:
+        try:
             
             today = datetime.today()
             formatted_date = today.strftime("%Y-%m-%d")
@@ -93,7 +93,6 @@ with DAG(
                 "hourly": ["temperature_2m", "relativehumidity_2m", "visibility", "uv_index"],
                 "forecast_days":1
             }
-            # response_weather = requests.get(f'https://api.open-meteo.com/v1/forecast?latitude=-2.9761,-6.6899&longitude=104.7754,108.4751&hourly=temperature_2m,relativehumidity_2m,visibility,uv_index&forecast_days=1')
             response_weather = requests.get(url_weather, params=params_weather)
             
             if response_weather.status_code == 200:
@@ -132,7 +131,6 @@ with DAG(
                 "hourly": ["pm10", "pm2_5"],
                 "forecast_days": 1
             }
-            # response_air_quality = requests.get(f'https://air-quality-api.open-meteo.com/v1/air-quality?latitude=-2.9761,-6.6899&longitude=104.7754,108.4751&hourly=pm10,pm2_5&start_date=2023-11-03&end_date=2023-11-03')
             response_air_quality = requests.get(url_air_quality, params=params)
             if response_weather.status_code == 200:
                 data_air_quality = response_air_quality.json()
@@ -158,13 +156,13 @@ with DAG(
                     writer.writeheader()
                     writer.writerows(data_to_write_aq)
 
-        # except Exception as e:
-            # print("Failed to write file json")
+        except Exception as e:
+            print("Failed to write file json")
 
 
     def insert_data_to_postgres():
 
-        # try:
+        try:
 
             # PostgreSQL connection parameters
             db_params = {
@@ -188,13 +186,10 @@ with DAG(
             with open(json_file_path_air_quality, "r") as json_file_air_quality:
                 data_air_quality = json.load(json_file_air_quality)
 
-            print("step this")
             # Establish a connection to the PostgreSQL database
             conn = psycopg2.connect(**db_params)
             print("Connection to PostgreSQL database successful")
             cursor = conn.cursor()
-
-            #     print('insert air quality')
 
             list_table_name = ['dim_weather', 'dim_air_quality']
             list_file_path = [file_path_weather_csv, file_path_air_quality_csv]
@@ -212,10 +207,10 @@ with DAG(
                     cursor.copy_expert(sql=copy_sql, file=file)
                     conn.commit()
                     print("commit csv")
-        # except Exception as e:
-        #     print("Failed to insert data weather to database postgres")
+        except Exception as e:
+            print("Failed to insert data weather to database postgres")
 
-        # finally:
+        finally:
 
             # Commit changes and close the connection
             conn.commit()
@@ -237,5 +232,3 @@ with DAG(
 
     # Set up the task dependencies
     fetch_data_task >> insert_data_task
-    # fetch_data_task
-    # insert_data_task

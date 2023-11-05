@@ -79,6 +79,23 @@ app.layout = dbc.Container([
             ])
             )
             ),
+
+            dbc.Row(dbc.Col(html.Div([
+
+                # Line chart for temperature
+                html.Div([
+                    dcc.Graph(id='weather-line-chart-relativehumidity_2m')
+                ], style={'display': 'inline-block','width': '50%'}),
+                # Line chart for visibility
+                html.Div([
+                    dcc.Graph(id='weather-line-chart-uv-index')
+                ], style={'display': 'inline-block','width': '50%'}),
+
+            ])
+            )
+            ),
+
+
         ]),
     ]),
 
@@ -107,7 +124,7 @@ def update_line_chart(selected_id):
     return fig_pm10, fig_pm2_5
 
 @app.callback(
-    [Output('weather-line-chart-temperature', 'figure'), Output('weather-line-chart-visibility', 'figure')],
+    [Output('weather-line-chart-temperature', 'figure'), Output('weather-line-chart-visibility', 'figure'), Output('weather-line-chart-relativehumidity_2m', 'figure'), Output('weather-line-chart-uv-index', 'figure')],
     Input('weather-id-dropdown', 'value')
 )
 def update_weather_line_charts(selected_id):
@@ -125,7 +142,19 @@ def update_weather_line_charts(selected_id):
         labels={'n_visibility': 'Visibility', 'd_date': 'Date'},
     )
 
-    return fig_temperature, fig_visibility
+    fig_relativehumidity_2m = px.line(
+        filtered_data, x='d_date', y='n_relativehumidity_2m',
+        title=f'Visibility for ID: {selected_id}',
+        labels={'n_relativehumidity_2m': 'Relative Humidity', 'd_date': 'Date'},
+    )
+
+    fig_uv_index = px.line(
+        filtered_data, x='d_date', y='n_uv_index',
+        title=f'Visibility for ID: {selected_id}',
+        labels={'n_uv_index': 'Uv Index', 'd_date': 'Date'},
+    )
+
+    return fig_temperature, fig_visibility, fig_relativehumidity_2m, fig_uv_index
 
 
 if __name__=='__main__':
